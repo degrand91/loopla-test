@@ -2,12 +2,7 @@
 
 export const getExchangeRates = async () => {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/rates`,
-      {
-        headers: { "Cache-Control": "always" },
-      }
-    )
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/rates`)
 
     if (!response.ok) {
       throw new Error(`Error: ${response.status} - ${response.statusText}`)
