@@ -2,6 +2,10 @@
 
 export const getExchangeRates = async () => {
   try {
+    console.log(
+      process.env.NEXT_PUBLIC_APP_URL,
+      "process.env.NEXT_PUBLIC_APP_URL"
+    )
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/rates`)
 
     if (!response.ok) {
@@ -17,7 +21,7 @@ export const getExchangeRates = async () => {
 
     return data
   } catch (error) {
-    console.error("Failed to fetch exchange rates:", error)
+    console.log("Failed to fetch exchange rates:", error)
     throw new Error("Failed to fetch exchange rates. Please try again later.")
   }
 }
