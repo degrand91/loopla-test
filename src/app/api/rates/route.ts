@@ -1,5 +1,4 @@
-import next from "next"
-
+export const dynamic = "force-dynamic"
 let cache: any = null
 let cacheTimestamp: number | null = null
 const CACHE_DURATION = process.env.CACHE_TTL || 3600 * 1000 // 1 hour in milliseconds
@@ -11,16 +10,17 @@ export async function GET() {
     console.log("Cache hit")
     return Response.json({ data: cache })
   }
-
   try {
-    const res = await fetch(
-      `${process.env.EXCHANGE_API_URL}/latest?access_key=${process.env.EXCHANGE_API_KEY}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    )
+    const apiKey = process.env.EXCHANGE_API_KEY
+    if (!apiKey) {
+      return Response.error()
+    }
+    const apiUrl = process.env.EXCHANGE_API_URL
+    const res = await fetch(`${apiUrl}/latest?access_key=${apiKey}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
 
     if (!res.ok || res.status > 300) {
       return Response.error()

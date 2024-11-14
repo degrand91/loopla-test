@@ -1,27 +1,25 @@
-FROM node:lts as dependencies
-WORKDIR /my-project
+FROM node:20 AS base
+WORKDIR /app
+RUN npm i -g pnpm
 COPY package.json ./
-RUN npm install
+# copy env file
+COPY .env .env
 
+RUN pnpm install
 
-FROM node:lts as builder
-WORKDIR /my-project
-COPY ./ .
-COPY ./.env .
-COPY --from=dependencies /my-project/node_modules ./node_modules
-RUN npm run build
+COPY . .
+RUN pnpm build
 
-FROM node:lts as runner
-WORKDIR /my-project
-ENV NODE_ENV production
-COPY --from=builder /my-project/next.config.js ./
-COPY --from=builder /my-project/public ./public
-COPY --from=builder /my-project/.next ./.next
-COPY --from=builder /my-project/.env ./.env
-COPY --from=builder /my-project/node_modules ./node_modules
-COPY --from=builder /my-project/package.json ./package.json
-ENV HOSTNAME="0.0.0.0"
-ENV NEXT_PUBLIC_APP_URL="http://localhost:3000"
+FROM node:20-alpine3.19 as release
+WORKDIR /app
+RUN npm i -g pnpm
+
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package.json ./package.json
+COPY --from=base /app/.next ./.next
+# copy env file
+COPY --from=base /app/.env ./.env
+
 EXPOSE 3000
 
-CMD ["yarn", "start", "-p" , "3000"]
+CMD ["pnpm", "start"]

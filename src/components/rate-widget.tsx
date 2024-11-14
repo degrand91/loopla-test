@@ -1,17 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SpinningLoader from './ui/spinning-loader';
 import { Button } from './ui/button';
+import { Rates } from '@/types';
 
-type Rates = { [key: string]: number };
 
-type RateWidgetProps = {
-  rates: Rates,
-  date: string,
-  refreshRates: () => Promise<void>
-};
+const AUTO_UPDATE_INTERVAL = 300000; // 5 minutes
 
 const exchangeRates = [
   { code: "EUR", name: "Euro", flag: "🇪🇺" },
@@ -28,33 +24,40 @@ const exchangeRates = [
   { code: "MXN", name: "Mexican Peso", flag: "🇲🇽" },
 ];
 
-const AUTO_UPDATE_INTERVAL = 300000; // 5 minutes
 
-const RateWidget = ({ rates, date, refreshRates }: RateWidgetProps) => {
+
+const RateWidget = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rates, setRates] = useState<Rates | null>(null);
+  const [date, setDate] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (rates) setLoading(false);
-  }, [rates]);
-
-  useEffect(() => {
-    const handleAutoUpdate = async () => {
-      setLoading(true);
-      await refreshRates();
-      setLoading(false);
-    };
-    const intervalId = setInterval(handleAutoUpdate, AUTO_UPDATE_INTERVAL);
-    return () => clearInterval(intervalId);
-  }, [refreshRates]);
-
-  const handleManualRefresh = async () => {
+  const refreshRates = useCallback(async () => {
+    setError(null);
     setLoading(true);
     try {
-      await refreshRates();
+      const response = await fetch('/api/rates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange rates');
+      }
+      const { data } = await response.json();
+      if (!data || !data.rates) {
+        throw new Error('Invalid data format');
+      }
+      setRates(data.rates);
+      setDate(data.date);
+    } catch (error) {
+      setError((error as Error).message || 'Failed to fetch exchange rates');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    refreshRates();
+    const intervalId = setInterval(refreshRates, AUTO_UPDATE_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [refreshRates]);
 
   const formatDate = (date: string) =>
     date ? `as of ${new Date(date).toLocaleDateString()}` : '--/--/----';
@@ -69,6 +72,7 @@ const RateWidget = ({ rates, date, refreshRates }: RateWidgetProps) => {
       <CardContent className="p-6">
         <div className="space-y-2">
           <div className="mb-4 text-right text-sm text-muted-foreground">1 USD =</div>
+          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
           {exchangeRates.map(({ code, name, flag }) => (
             <div key={code} className="flex items-center justify-between py-1 text-sm hover:bg-muted/50">
               <div className="flex items-center gap-2">
@@ -76,16 +80,16 @@ const RateWidget = ({ rates, date, refreshRates }: RateWidgetProps) => {
                 <span>{name}</span>
               </div>
               <span className="font-mono tabular-nums" aria-live="polite">
-                {loading ? <SpinningLoader size="md" /> : rates[code]?.toFixed(2) ?? 'N/A'}
+                {loading ? <SpinningLoader size="md" /> : (rates && rates[code]?.toFixed(2)) ?? 'N/A'}
               </span>
             </div>
           ))}
-          <div className="flex items-center justify-between py-1 text-sm ">
-            <Button variant="outline" size="sm" onClick={handleManualRefresh} disabled={loading}>
+          <div className="flex items-center justify-between py-1 text-sm">
+            <Button variant="outline" size="sm" onClick={refreshRates} disabled={loading}>
               {loading ? 'Refreshing...' : 'Refresh'}
             </Button>
             <div className="mt-4 text-right text-xs text-muted-foreground">
-              Rates {formatDate(date)}
+              Rates {date ? formatDate(date) : '--/--/----'}
             </div>
           </div>
         </div>

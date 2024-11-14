@@ -12,3 +12,5 @@ export type SiteConfig = {
   }
   ogImage: string
 }
+
+export type Rates = { [key: string]: number };
